@@ -4,3 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+data-encoding = "2.9.0"
+log = "0.4.27"
+num-bigint = "0.4.6"
+ring = "0.17.14"
+sled = "0.34.7"
