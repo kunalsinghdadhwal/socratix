@@ -1,0 +1,1 @@
+use crate::wallet:hash_pub_key;
