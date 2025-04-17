@@ -1,8 +1,10 @@
 use crate::transaction::TXOutput;
-use crate::{Block, Transaction};
+use crate::{Block, Transaction, block};
 
 use std::collections::HashMap;
 use std::env::current_dir;
+use std::option;
+use std::sync::mpsc::Iter;
 use std::sync::{Arc, RwLock};
 
 use data_encoding::HEXLOWER;
@@ -75,5 +77,240 @@ impl Blockchain {
     pub fn set_tip_hash(&self, new_tip_hash: &str) {
         let mut tip_hash = self.tip_hash.write().unwrap();
         *tip_hash = String::from(new_tip_hash)
+    }
+
+    pub fn mine_block(&self, transactions: &[Transaction]) -> Block {
+        for transaction in transactions {
+            if !transaction.verify(self) {
+                panic!("Error: Invalid transaction")
+            }
+        }
+        let best_height = self.get_best_height();
+
+        let block = Block::new_block(self.get_tip_hash(), transactions, best_height + 1);
+        let block_hahs = block.get_hash();
+
+        let blocks_tree = self.db.open_tree(BLOCKS_TREE).unwrap();
+        Self::update_blocks_tree(&blocks_tree, &block);
+        self.set_tip_hash(block_hahs);
+        block
+    }
+
+    pub fn iterator(&self) -> BlockchainIterator {
+        BlockchainIterator::new(self.get_tip_hash(), self.db.clone())
+    }
+
+    pub fn find_utxo(&self) -> HashMap<String, Vec<TXOutput>> {
+        let mut utxo: HashMap<String, Vec<TXOutput>> = HashMap::new();
+        let mut spent_txos: HashMap<String, Vec<TXOutput>> = HashMap::new();
+        let mut iterator = self.iterator();
+
+        loop {
+            let option = iterator.next();
+            if option.is_none() {
+                break;
+            }
+            let block = option.unwrap();
+            'outer: for tx in block.get_transactions() {
+                let txid_hex = HEXLOWER.encode(tx.get_id());
+                for (idx, out) in tx.get_vout().iter().enumerate() {
+                    if let Some(outs) = spent_txos.get(txid_hex.as_str()) {
+                        for spent_out_idx in outs {
+                            if idx.eq(spent_out_idx) {
+                                continue 'outer;
+                            }
+                        }
+                    }
+
+                    if utxo.contains_key(txid_hex.as_str()) {
+                        utxo.get_mut(txid_hex.as_str()).unwrap().push(out.clone());
+                    } else {
+                        utxo.insert(txid_hex.clone(), vec![out.clone()]);
+                    }
+                }
+                if tx.is_coinbase() {
+                    continue;
+                }
+
+                for txin in tx.get_vin() {
+                    let txid_hex = HEXLOWER.encode(txin.get_txid());
+                    if spent_txos.contains_key(txid_hex.as_str()) {
+                        spent_txos
+                            .get_mut(txid_hex.as_str())
+                            .unwrap()
+                            .push(txin.get_vout());
+                    } else {
+                        spent_txos.insert(txid_hex, vec![txin.get_vout()]);
+                    }
+                }
+            }
+        }
+        utxo
+    }
+
+    pub fn find_transaction(&self, txid: &[u8]) -> Option<Transaction> {
+        let mut iterator = self.iterator();
+
+        loop {
+            let option = iterator.next();
+            if option.is_none() {
+                break;
+            }
+
+            let block = option.unwrap();
+            for tx in block.get_transactions() {
+                if txid.eq(tx.get_id()) {
+                    return Some(tx.clone());
+                }
+            }
+        }
+        None
+    }
+
+    pub fn add_block(&self, block: &Block) {
+        let block_tree = self.db.open_tree(BLOCKS_TREE).unwrap();
+        if let Some(_) = block_tree.get(block.get_hash()).unwrap() {
+            return;
+        }
+
+        let _: TransactionResult<(), ()> = block_tree.transaction(|tx_db| {
+            let _ = tx_db.insert(block.get_hash(), block.serialize()).unwrap();
+
+            let tip_block_bytes = tx_db
+                .get(self.get_tip_hash())
+                .unwrap()
+                .expect("Invalid Tip hash");
+            let tip_block = Block::deserialize(tip_block_bytes.as_ref());
+            if block.get_height() > tip_block.get_height() {
+                let _ = tx_db.insert(TIP_BLOCK_HASH_KEY, block.get_hash()).unwrap();
+                self.set_tip_hash(block.get_hash());
+            }
+            Ok(())
+        });
+    }
+
+    pub fn get_best_height(&self) -> usize {
+        let blocks_tree = self.db.open_tree(BLOCKS_TREE).unwrap();
+        let tip_block_bytes = blocks_tree
+            .get(self.get_tip_hash())
+            .unwrap()
+            .expect("Valid Tip hash");
+        let tip_block = Block::deserialize(tip_block_bytes.as_ref());
+        tip_block.get_height()
+    }
+
+    pub fn get_block(&self, block_hash: &[u8]) -> Option<Block> {
+        let block_tree = self.db.open_tree(BLOCKS_TREE).unwrap();
+        if let Some(block_bytes) = block_tree.get(block_hash).unwrap() {
+            let block = Block::deserialize(block_bytes.as_ref());
+            return Some(block);
+        }
+        None
+    }
+
+    pub fn get_block_hashes(&self) -> Vec<Vec<u8>> {
+        let mut iterator = self.iterator();
+        let mut blocks = vec![];
+        loop {
+            let option = iterator.next();
+            if option.is_none() {
+                break;
+            }
+            let block = option.unwrap();
+            blocks.push(block.get_hash_bytes());
+        }
+        blocks
+    }
+}
+
+pub struct BlockchainIterator {
+    db: Db,
+    current_hash: String,
+}
+
+impl BlockchainIterator {
+    fn new(tip_hash: String, db: Db) -> BlockchainIterator {
+        BlockchainIterator {
+            current_hash: tip_hash,
+            db,
+        }
+    }
+
+    pub fn next(&mut self) -> Option<Block> {
+        let blocks_tree = self.db.open_tree(BLOCKS_TREE).unwrap();
+        let data = blocks_tree.get(self.current_hash.clone()).unwrap();
+        if data.is_none() {
+            return None;
+        }
+        let block = Block::deserialize(data.unwrap().to_vec().as_slice());
+        self.current_hash = block.get_pre_block_hash().clone();
+        return Some(block);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::Block;
+
+    #[test]
+    fn test_create_blockchain() {
+        let _ = super::Blockchain::create_blockchain("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa");
+    }
+
+    #[test]
+    fn test_mine_block() {
+        let blockchain = super::Blockchain::new_blockchain();
+        let _ = blockchain.mine_block(&vec![]);
+    }
+
+    #[test]
+    fn test_get_best_height() {
+        let blockchain = super::Blockchain::new_blockchain();
+        println!(
+            "tip_hash = {}, best_height: {}",
+            blockchain.get_tip_hash(),
+            blockchain.get_best_height()
+        );
+    }
+
+    #[test]
+    fn test_add_block() {
+        let blockchain = super::Blockchain::new_blockchain();
+        let best_height = blockchain.get_best_height();
+        let block = Block::new_block(blockchain.get_tip_hash(), &vec![], best_height + 1);
+        blockchain.add_block(&block);
+        println!(
+            "tip_hash = {}, best_height = {}",
+            blockchain.get_tip_hash(),
+            blockchain.get_best_height()
+        );
+    }
+
+    #[test]
+    fn test_get_block_hashes() {
+        let blockchain = super::Blockchain::new_blockchain();
+        let block_hashs = blockchain.get_block_hashes();
+        for hash_bytes in block_hashs {
+            println!("{}", String::from_utf8(hash_bytes).unwrap())
+        }
+    }
+
+    #[test]
+    fn test_get_block() {
+        let blockchain = super::Blockchain::new_blockchain();
+        if let Some(block) = blockchain.get_block(
+            "0060a9e030158c9fa012f06eeb18f8d1f26523aa1483face260730c14a140fce".as_bytes(),
+        ) {
+            println!("{}", block.get_hash())
+        }
+    }
+
+    #[test]
+    fn test_find_transaction() {
+        let blockchain = super::Blockchain::new_blockchain();
+        let trasaction = blockchain.find_transaction(
+            "00aee463227e52bf2c6986033d86a2572942f9d79a1da7c4cebe790a8b8ead92".as_bytes(),
+        );
+        assert!(trasaction.is_none())
     }
 }
