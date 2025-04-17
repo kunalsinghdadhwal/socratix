@@ -1,4 +1,5 @@
 use crate::{ProofOfWork, Transaction};
+
 use serde::{Deserialize, Serialize};
 use sled::IVec;
 
