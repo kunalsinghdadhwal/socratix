@@ -1,11 +1,14 @@
 mod block;
-use block::Block;
+pub use block::Block;
+
+mod blockchain;
+pub use blockchain::Blockchain;
 
 mod proof_of_work;
-use proof_of_work::ProofOfWork;
+pub use proof_of_work::ProofOfWork;
 
 mod transaction;
-use transaction::Transaction;
+pub use transaction::Transaction;
 
-mod utils;
+pub mod utils;
 use utils::*;
