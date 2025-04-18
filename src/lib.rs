@@ -26,3 +26,10 @@ pub use node::Nodes;
 
 mod utxo_set;
 pub use utxo_set::UTXOSet;
+
+mod wallet;
+pub use wallet::ADDRESS_CHECK_SUM_LEN;
+pub use wallet::Wallet;
+pub use wallet::convert_address;
+pub use wallet::hash_pub_key;
+pub use wallet::validate_address;
