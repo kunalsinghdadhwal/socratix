@@ -23,3 +23,6 @@ pub use memory_pool::MemoryPool;
 
 mod node;
 pub use node::Nodes;
+
+mod utxo_set;
+pub use utxo_set::UTXOSet;
