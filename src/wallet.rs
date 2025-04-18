@@ -74,7 +74,7 @@ pub fn convert_address(pub_hash_key: &[u8]) -> String {
     crate::base58_encode(payload.as_slice())
 }
 
-pub fn get_pub_key_hash(address: &str) -> Vec<u8> {
+pub fn _get_pub_key_hash(address: &str) -> Vec<u8> {
     let payload = crate::base58_decode(address);
     payload[1..payload.len() - ADDRESS_CHECK_SUM_LEN].to_vec()
 }

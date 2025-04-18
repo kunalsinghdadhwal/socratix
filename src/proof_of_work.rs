@@ -1,9 +1,10 @@
 use crate::Block;
 
-use data_encoding::HEXLOWER;
-use num_bigint::{BigInt, Sign};
 use std::borrow::Borrow;
 use std::ops::ShlAssign;
+
+use data_encoding::HEXLOWER;
+use num_bigint::{BigInt, Sign};
 
 pub struct ProofOfWork {
     block: Block,

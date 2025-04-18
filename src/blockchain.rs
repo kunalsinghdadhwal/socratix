@@ -100,9 +100,9 @@ impl Blockchain {
 
     pub fn find_utxo(&self) -> HashMap<String, Vec<TXOutput>> {
         let mut utxo: HashMap<String, Vec<TXOutput>> = HashMap::new();
-        let mut spent_txos: HashMap<String, Vec<TXOutput>> = HashMap::new();
-        let mut iterator = self.iterator();
+        let mut spent_txos: HashMap<String, Vec<usize>> = HashMap::new();
 
+        let mut iterator = self.iterator();
         loop {
             let option = iterator.next();
             if option.is_none() {
@@ -113,13 +113,12 @@ impl Blockchain {
                 let txid_hex = HEXLOWER.encode(tx.get_id());
                 for (idx, out) in tx.get_vout().iter().enumerate() {
                     if let Some(outs) = spent_txos.get(txid_hex.as_str()) {
-                        for spent_out_idx in outs {
-                            if idx.eq(spent_out_idx) {
+                        for spend_out_idx in outs {
+                            if idx.eq(spend_out_idx) {
                                 continue 'outer;
                             }
                         }
                     }
-
                     if utxo.contains_key(txid_hex.as_str()) {
                         utxo.get_mut(txid_hex.as_str()).unwrap().push(out.clone());
                     } else {

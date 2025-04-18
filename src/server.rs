@@ -8,7 +8,6 @@ use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream};
 use std::thread;
 use std::time::Duration;
 
-use bincode::Result;
 use data_encoding::HEXLOWER;
 use log::{error, info};
 use once_cell::sync::Lazy;
@@ -176,7 +175,7 @@ fn send_get_blocks(addr: &str) {
     );
 }
 
-fn serve(blockchain: Blockchain, stream: TcpStream) -> Result<(), Box<dyn Error>> {
+fn serve(blockchain: Blockchain, stream: TcpStream) -> std::result::Result<(), Box<dyn Error>> {
     let peer_addr = stream.peer_addr()?;
     let reader = BufReader::new(&stream);
     let pkg_reader = Deserializer::from_reader(reader).into_iter::<Package>();
