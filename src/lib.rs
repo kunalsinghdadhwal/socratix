@@ -12,3 +12,7 @@ pub use transaction::Transaction;
 
 pub mod utils;
 use utils::*;
+
+mod config;
+pub use config::Config;
+pub use config::GLOBAL_CONFIG;

@@ -14,8 +14,11 @@ pub struct Block {
 }
 
 impl Block {
-    
-    pub fn new_block(prev_block_hash: String, transactions: &[Transaction], height: usize) -> Block {
+    pub fn new_block(
+        prev_block_hash: String,
+        transactions: &[Transaction],
+        height: usize,
+    ) -> Block {
         let mut block = Block {
             timestamp: crate::current_timestamp(),
             prev_block_hash,
@@ -25,7 +28,7 @@ impl Block {
             height,
         };
 
-        let pow = ProofOfWork::new_proof_of_work(block.clone())
+        let pow = ProofOfWork::new_proof_of_work(block.clone());
         let (nonce, hash) = pow.run();
         block.hash = hash;
         block.nonce = nonce;
@@ -36,7 +39,6 @@ impl Block {
         bincode::deserialize(bytes).unwrap()
     }
 
-   
     pub fn serialize(&self) -> Vec<u8> {
         bincode::serialize(self).unwrap().to_vec()
     }
@@ -59,7 +61,7 @@ impl Block {
         self.transactions.as_slice()
     }
 
-    pub fn get_pre_block_hash(&self) -> String {
+    pub fn get_prev_block_hash(&self) -> String {
         self.prev_block_hash.clone()
     }
 
@@ -78,7 +80,6 @@ impl Block {
     pub fn get_height(&self) -> usize {
         self.height
     }
-
 }
 
 impl From<Block> for IVec {

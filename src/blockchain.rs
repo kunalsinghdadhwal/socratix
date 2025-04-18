@@ -1,10 +1,8 @@
 use crate::transaction::TXOutput;
-use crate::{Block, Transaction, block};
+use crate::{Block, Transaction};
 
 use std::collections::HashMap;
 use std::env::current_dir;
-use std::option;
-use std::sync::mpsc::Iter;
 use std::sync::{Arc, RwLock};
 
 use data_encoding::HEXLOWER;
@@ -243,7 +241,7 @@ impl BlockchainIterator {
             return None;
         }
         let block = Block::deserialize(data.unwrap().to_vec().as_slice());
-        self.current_hash = block.get_pre_block_hash().clone();
+        self.current_hash = block.get_prev_block_hash().clone();
         return Some(block);
     }
 }

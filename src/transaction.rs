@@ -1,4 +1,4 @@
-use crate::{block, wallet}:hash_pub_key;
+use crate::{block, wallet}::hash_pub_key;
 use crate::{base58_decode, wallet, Blockchain, UTXOSet, Wallets};
 
 use data_encoding::HEXLOWER;
