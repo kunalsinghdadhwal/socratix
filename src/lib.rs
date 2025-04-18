@@ -36,3 +36,9 @@ pub use wallet::validate_address;
 
 mod wallets;
 pub use wallets::Wallets;
+
+mod server;
+pub use server::CENTERAL_NODE;
+pub use server::Package;
+pub use server::Server;
+pub use server::send_tx;
