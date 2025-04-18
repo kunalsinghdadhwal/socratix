@@ -11,7 +11,7 @@ impl Node {
         Node { addr }
     }
 
-    fn get_addr(&self) -> String {
+    pub fn get_addr(&self) -> String {
         self.addr.clone()
     }
 

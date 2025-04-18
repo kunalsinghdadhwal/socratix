@@ -80,7 +80,7 @@ impl UTXOSet {
         counter
     }
 
-    pub fn reinder(&self) {
+    pub fn reindex(&self) {
         let db = self.blockchain.get_db();
         let utxo_tree = db.open_tree(UTXO_TREE).unwrap();
         let _ = utxo_tree.clear().unwrap();
