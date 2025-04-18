@@ -16,3 +16,7 @@ use utils::*;
 mod config;
 pub use config::Config;
 pub use config::GLOBAL_CONFIG;
+
+mod memory_pool;
+pub use memory_pool::BlockInTransit;
+pub use memory_pool::MemoryPool;
