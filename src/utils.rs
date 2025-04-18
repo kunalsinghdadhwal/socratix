@@ -2,7 +2,7 @@ use crypto::digest::Digest;
 use ring::digest::{Context, SHA256};
 use ring::rand::SystemRandom;
 use ring::signature::{ECDSA_P256_SHA256_FIXED, ECDSA_P256_SHA256_FIXED_SIGNING, EcdsaKeyPair};
-use std::io::{Read, repeat};
+use std::iter::repeat;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn current_timestamp() -> i64 {
@@ -21,7 +21,7 @@ pub fn sha256_digest(data: &[u8]) -> Vec<u8> {
 pub fn ripemd160_digest(data: &[u8]) -> Vec<u8> {
     let mut ripemd160 = crypto::ripemd160::Ripemd160::new();
     ripemd160.input(data);
-    let mut buf: Vec<u8> = repeat(0).take(ripemd160.output_bytes() as u64).collect();
+    let mut buf: Vec<u8> = repeat(0).take(ripemd160.output_bytes()).collect();
     ripemd160.result(&mut buf);
     buf
 }

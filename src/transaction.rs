@@ -1,8 +1,7 @@
-use crate::{block, wallet}::hash_pub_key;
-use crate::{base58_decode, wallet, Blockchain, UTXOSet, Wallets};
+use crate::wallet::hash_pub_key;
+use crate::{Blockchain, UTXOSet, Wallets, base58_decode, wallet};
 
 use data_encoding::HEXLOWER;
-use serde::de::value;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -13,11 +12,11 @@ pub struct TXInput {
     txid: Vec<u8>,
     vout: usize,
     signature: Vec<u8>,
-    pub_key: Vec<u8>,    
+    pub_key: Vec<u8>,
 }
 
 impl TXInput {
-    pub fn new(txid: Vec<u8>, vout: usize) -> TXInput {
+    pub fn new(txid: &[u8], vout: usize) -> TXInput {
         TXInput {
             txid: txid.to_vec(),
             vout,
@@ -115,7 +114,7 @@ impl Transaction {
 
         let public_key_hash = hash_pub_key(wallet.get_public_key());
 
-        let (accumlated, valid_outputs) = 
+        let (accumlated, valid_outputs) =
             utxo_set.find_spendable_outputs(public_key_hash.as_slice(), amount);
         if accumlated < amount {
             panic!("Not enough funds")
@@ -125,7 +124,7 @@ impl Transaction {
 
         for (txid_hex, outs) in valid_outputs {
             let txid = HEXLOWER.decode(txid_hex.as_bytes()).unwrap();
-            for out in outs { 
+            for out in outs {
                 let input = TXInput {
                     txid: txid.clone(),
                     vout: out,
@@ -172,9 +171,8 @@ impl Transaction {
 
     fn sign(&mut self, blockchain: &Blockchain, pkcs8: &[u8]) {
         let mut tx_copy = self.trimmed_copy();
-        
+
         for (idx, vin) in self.vin.iter_mut().enumerate() {
-            
             let prev_tx_option = blockchain.find_transaction(vin.get_txid());
             if prev_tx_option.is_none() {
                 panic!("Error: Previous transaction is not correct")
@@ -188,33 +186,37 @@ impl Transaction {
             let signature = crate::ecdsa_p256_sha256_sign_digest(pkcs8, tx_copy.get_id());
             vin.signature = signature
         }
+    }
 
-        pub fn verify(&self, blockchain: &Blockchain) -> bool {
-            if self.is_coinbase() {
-                true
-            }
-
-            let mut tx_copy = self.trimmed_copy();
-
-            for (idx, vin) in self.vin.iter().enumerate() {
-                let prev_tx_option = blockchain.find_transaction(vin.get_txid());
-                if prev_tx_option.is_none() {
-                    pranic!("Error: Previous transaction is not correct")
-                }
-                let prev_tx = prev_tx_option.unwrap();
-                tx_copy.vin[idx].signature = vec![];
-                tx_copy.vin[idx].pub_key = prev_tx.vout[vin.vout].pub_key_hash.clone();
-                tx_copy.id = tx_copy.hash();
-                tx_copy.vin[idx].pub_key = vec![];
-
-                let verify = crate::ecdsa_p256_sha256_sign_verify(vin.pub_key.as_slice(), vin.signature.as_slice(), tx_copy.get_id());
-
-                if !verify {
-                    false
-                }
-            }
-            true
+    pub fn verify(&self, blockchain: &Blockchain) -> bool {
+        if self.is_coinbase() {
+            return true;
         }
+
+        let mut tx_copy = self.trimmed_copy();
+
+        for (idx, vin) in self.vin.iter().enumerate() {
+            let prev_tx_option = blockchain.find_transaction(vin.get_txid());
+            if prev_tx_option.is_none() {
+                panic!("Error: Previous transaction is not correct")
+            }
+            let prev_tx = prev_tx_option.unwrap();
+            tx_copy.vin[idx].signature = vec![];
+            tx_copy.vin[idx].pub_key = prev_tx.vout[vin.vout].pub_key_hash.clone();
+            tx_copy.id = tx_copy.hash();
+            tx_copy.vin[idx].pub_key = vec![];
+
+            let verify = crate::ecdsa_p256_sha256_sign_verify(
+                vin.pub_key.as_slice(),
+                vin.signature.as_slice(),
+                tx_copy.get_id(),
+            );
+
+            if !verify {
+                return false;
+            }
+        }
+        true
     }
 
     pub fn is_coinbase(&self) -> bool {
@@ -262,7 +264,6 @@ mod tests {
 
     #[test]
     fn new_coinbase_tx() {
-       
         let tx = Transaction::new_coinbase_tx("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa");
         let txid_hex = HEXLOWER.encode(tx.get_id());
         println!("txid = {}", txid_hex);
@@ -287,7 +288,7 @@ mod tests {
             &utxo_set,
         );
         let txid_hex = HEXLOWER.encode(tx.get_id());
-      
+
         println!("txid_hex = {}", txid_hex);
     }
 }

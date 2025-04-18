@@ -1,4 +1,4 @@
-use ring::{pkcs8, signature::{EcdsaKeyPair, KeyPair, ECDSA_P256_SHA256_FIXED_SIGNING}};
+use ring::signature::{ECDSA_P256_SHA256_FIXED_SIGNING, EcdsaKeyPair, KeyPair};
 use serde::{Deserialize, Serialize};
 
 const VERSION: u8 = 0x00;
@@ -11,16 +11,13 @@ pub struct Wallet {
 }
 
 impl Wallet {
-
     pub fn new() -> Wallet {
         let pkcs8 = crate::new_key_pair();
-        let key_pair = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING,, pkcs8.as_ref()).unwrap();
+        let key_pair =
+            EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_FIXED_SIGNING, pkcs8.as_ref()).unwrap();
         let public_key = key_pair.public_key().as_ref().to_vec();
 
-        Wallet {
-            pkcs8,
-            public_key,
-        }
+        Wallet { pkcs8, public_key }
     }
 
     pub fn get_address(&self) -> String {
@@ -32,7 +29,7 @@ impl Wallet {
         let checksum = checksum(payload.as_slice());
 
         payload.extend(checksum.as_slice());
-        crate::base58_encode(payload.as_slice());
+        crate::base58_encode(payload.as_slice())
     }
 
     pub fn get_public_key(&self) -> &[u8] {
@@ -51,7 +48,7 @@ pub fn hash_pub_key(pub_key: &[u8]) -> Vec<u8> {
 
 fn checksum(payload: &[u8]) -> Vec<u8> {
     let first_sha256 = crate::sha256_digest(payload);
-    let second_sha256 = crate::sha256_digest(sha256_1.as_slice());
+    let second_sha256 = crate::sha256_digest(first_sha256.as_slice());
     second_sha256[0..ADDRESS_CHECK_SUM_LEN].to_vec()
 }
 
@@ -94,7 +91,6 @@ mod tests {
 
     #[test]
     pub fn test_validate_address() {
-      
         let valid = validate_address("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa");
         assert!(valid);
     }

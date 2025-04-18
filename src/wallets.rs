@@ -1,9 +1,9 @@
-use crate::{wallet, Wallet};
+use crate::Wallet;
 
 use std::collections::HashMap;
 use std::env::current_dir;
 use std::fs::{File, OpenOptions};
-use std::io::{BufReader, BufWriter, Read, Write};
+use std::io::{BufWriter, Read, Write};
 use std::vec;
 
 pub const WALLET_FILE: &str = "wallets.dat";
@@ -16,7 +16,7 @@ impl Wallets {
     pub fn new() -> Wallets {
         let mut wallets = Wallets {
             wallets: HashMap::new(),
-        }
+        };
 
         wallets.load_from_file();
         wallets
@@ -55,13 +55,17 @@ impl Wallets {
         let metadata = file.metadata().expect("Unable to read metadata");
         let mut buf = vec![0; metadata.len() as usize];
         let _ = file.read(&mut buf).expect("Unable to read file");
-        let wallets =  bincode::deserialize(&buf[..]).expect("Unable to deserialize wallets");
+        let wallets = bincode::deserialize(&buf[..]).expect("Unable to deserialize wallets");
         self.wallets = wallets;
     }
 
     fn save_to_file(&self) {
         let path = current_dir().unwrap().join(WALLET_FILE);
-        let file = OpenOptions::new().create(true).write(true).open(&path).expect("Unable to open wallets.dat");
+        let file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open(&path)
+            .expect("Unable to open wallets.dat");
         let mut writer = BufWriter::new(file);
         let wallets_bytes = bincode::serialize(&self.wallets).expect("Unable to serialize wallets");
         writer.write(wallets_bytes.as_slice()).unwrap();
@@ -83,7 +87,7 @@ mod tests {
     #[test]
     fn test_get_addresses() {
         let addresses = Wallets::new().get_addresses();
-       
+
         println!("{:?}", addresses);
     }
 }

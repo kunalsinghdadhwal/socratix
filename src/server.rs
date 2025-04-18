@@ -1,6 +1,5 @@
 use crate::{
     Block, BlockInTransit, Blockchain, GLOBAL_CONFIG, MemoryPool, Nodes, Transaction, UTXOSet,
-    block,
 };
 
 use std::error::Error;
@@ -10,7 +9,6 @@ use std::thread;
 use std::time::Duration;
 
 use bincode::Result;
-use clap::error;
 use data_encoding::HEXLOWER;
 use log::{error, info};
 use once_cell::sync::Lazy;
@@ -142,7 +140,7 @@ fn send_block(addr: &str, block: &Block) {
     );
 }
 
-fn send_tx(addr: &str, tx: &Transaction) {
+pub fn send_tx(addr: &str, tx: &Transaction) {
     let socket_addr = addr.parse().unwrap();
     let node_addr = GLOBAL_CONFIG.get_node_addr().parse().unwrap();
     send_data(
@@ -184,7 +182,7 @@ fn serve(blockchain: Blockchain, stream: TcpStream) -> Result<(), Box<dyn Error>
     let pkg_reader = Deserializer::from_reader(reader).into_iter::<Package>();
 
     for pkg in pkg_reader {
-        let pkg = pkg?;
+        let pkg = pkg.unwrap();
         info!("Receive requesr from {}: {:?}", peer_addr, pkg);
 
         match pkg {
@@ -345,7 +343,7 @@ fn send_data(addr: SocketAddr, pkg: Package) {
     }
 
     let mut stream = stream.unwrap();
-    let _ = stream.set_read_timeout(Option::from(Duration::from_millis((TCP_WRITE_TIMEOUT))));
+    let _ = stream.set_read_timeout(Option::from(Duration::from_millis(TCP_WRITE_TIMEOUT)));
     let _ = serde_json::to_writer(&stream, &pkg);
     let _ = stream.flush();
 }
