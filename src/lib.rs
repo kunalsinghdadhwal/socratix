@@ -33,3 +33,6 @@ pub use wallet::Wallet;
 pub use wallet::convert_address;
 pub use wallet::hash_pub_key;
 pub use wallet::validate_address;
+
+mod wallets;
+pub use wallets::Wallets;
